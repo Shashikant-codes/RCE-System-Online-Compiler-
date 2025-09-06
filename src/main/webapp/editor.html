@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Language Code Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <style>
+        :root {
+            --primary: #646cff;
+            --primary-hover: #535bf2;
+            --bg: #1a1a1a;
+            --editor-bg: #282c34;
+            --text: rgba(255, 255, 255, 0.87);
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --border: #444;
+            --success: #4CAF50;
+            --error: #f44336;
+            --warning: #ff9800;
+            --card-bg: #242424;
+            --line-numbers: #636363;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.5;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(90deg, var(--primary), #61dafb);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        select, button, input {
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        select, input {
+            background-color: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .editor-container {
+            display: flex;
+            gap: 20px;
+            height: calc(100% - 80px);
+        }
+
+        .editor-section, .output-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            padding: 12px 15px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header h2 {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .line-numbers {
+            width: 40px;
+            padding: 15px 5px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: var(--editor-bg);
+            color: var(--line-numbers);
+            text-align: right;
+            border-right: 1px solid var(--border);
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .editor-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #code-editor {
+    width: 100%;
+    height: 100%;
+    padding: 15px;
+    margin: 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: transparent;
+    color: transparent;
+    border: none;
+    resize: none;
+    outline: none;
+    tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    caret-color: var(--text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    /* Ensure consistent text rendering */
+    font-variant-ligatures: none;
+    text-rendering: optimizeSpeed;
+}
+
+#highlighted-code {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 15px;
+    margin: 0;
+    pointer-events: none;
+    overflow: hidden;
+    background: var(--editor-bg);
+    color: var(--text);
+    white-space: pre;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    tab-size: 4;
+    z-index: 1;
+    /* Match text rendering with editor */
+    font-variant-ligatures: none;
+    text-rendering: optimizeSpeed;
+}
+
+#highlighted-code code {
+    white-space: pre;
+    display: block;
+    margin: 0;
+    padding: 0;
+    /* Prevent any additional spacing */
+    border: 0;
+    /* Match the editor's text characteristics */
+    font: inherit;
+}
+
+        .output-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .input-section {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .input-section label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        #compiler-input {
+            width: 100%;
+            padding: 8px 12px;
+            font-family: 'Fira Code', monospace;
+            background-color: var(--editor-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .output-content {
+            flex: 1;
+            overflow: auto;
+            padding: 15px;
+            font-family: 'Fira Code', monospace;
+            background-color: var(--editor-bg);
+            color: var(--text);
+            white-space: pre-wrap;
+        }
+
+        #output {
+            min-height: 100%;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 0 0 8px 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status.success {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: var(--success);
+        }
+
+        .status.error {
+            background-color: rgba(244, 67, 54, 0.2);
+            color: var(--error);
+        }
+
+        .status.warning {
+            background-color: rgba(255, 152, 0, 0.2);
+            color: var(--warning);
+        }
+
+        .status.loading {
+            background-color: rgba(33, 150, 243, 0.2);
+            color: #2196F3;
+        }
+
+        .status-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .language-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .editor-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .controls {
+                width: 100%;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            select, button, input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Compile Zen</h1>
+            <div class="controls">
+                <select id="language">
+                    <option value="c">C</option>
+                    <option value="cpp">C++</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="csharp">C#</option>
+                    <option value="php">PHP</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                </select>
+                <button id="run-btn">
+                    <svg class="language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Run Code
+                </button>
+            </div>
+        </div>
+        
+        <div class="editor-container">
+            <div class="editor-section">
+                <div class="section-header">
+                    <h2>
+                        <svg class="language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        EDITOR
+                    </h2>
+                </div>
+                <div class="code-container">
+                    <div class="line-numbers" id="line-numbers"></div>
+                    <div class="editor-content">
+                        <textarea id="code-editor" spellcheck="false"></textarea>
+                        <pre id="highlighted-code"><code id="highlighted-content"></code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="output-section">
+                <div class="section-header">
+                    <h2>
+                        <svg class="language-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        OUTPUT
+                    </h2>
+                </div>
+                <div class="output-container">
+                    <div class="input-section">
+                        <label for="compiler-input">Program Input (STDIN):</label>
+                        <input type="text" id="compiler-input" placeholder="Enter input for your program...">
+                    </div>
+                    <div class="output-content">
+                        <div id="output"></div>
+                    </div>
+                </div>
+                <div id="status" class="status">
+                    <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Ready to execute code
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <!-- Load all language syntax highlighters we might need -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/csharp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/rust.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeEditor = document.getElementById('code-editor');
+            const highlightedContent = document.getElementById('highlighted-content');
+            const lineNumbers = document.getElementById('line-numbers');
+            const languageSelect = document.getElementById('language');
+            const runBtn = document.getElementById('run-btn');
+            const outputDiv = document.getElementById('output');
+            const statusDiv = document.getElementById('status');
+            const compilerInput = document.getElementById('compiler-input');
+            
+            // Language to Judge0 language ID mapping
+            const languageToId = {
+                'c': 50,       
+                'cpp': 54,    
+                'javascript': 63,
+                'python': 71,
+                'java': 62,
+                'csharp': 51,
+                'php': 68,
+                'ruby': 72,
+                'go': 60,
+                'rust': 73
+            };
+            
+            // Set default code based on selected language
+            languageSelect.addEventListener('change', setDefaultCode);
+            setDefaultCode();
+            
+            // Run button click handler
+            runBtn.addEventListener('click', runCode);
+            
+            // Handle editor updates
+            codeEditor.addEventListener('input', function() {
+                updateHighlighting();
+                updateLineNumbers();
+            });
+            
+            codeEditor.addEventListener('scroll', syncScroll);
+            
+            // Enable tab key in textarea
+            codeEditor.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    // Insert tab character
+                    this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
+                    
+                    // Move cursor position
+                    this.selectionStart = this.selectionEnd = start + 1;
+                    
+                    // Update highlighting and line numbers
+                    updateHighlighting();
+                    updateLineNumbers();
+                }
+            });
+            
+            // Initialize line numbers
+            updateLineNumbers();
+            
+            function setDefaultCode() {
+                const language = languageSelect.value;
+                let defaultCode = '';
+                
+                switch(language) {
+                    case 'c':
+                        defaultCode = '// C code\n#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    \n    // Try adding:\n    // for (int i = 0; i < 5; i++) {\n    //     printf("Count: %d\\n", i);\n    // }\n    return 0;\n}';
+                        break;
+                    case 'cpp':
+                        defaultCode = '// C++ code\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    \n    // Try adding:\n    // for (int i = 0; i < 5; i++) {\n    //     std::cout << "Index " << i << std::endl;\n    // }\n    return 0;\n}';
+                        break;
+    
+                    case 'javascript':
+                        defaultCode = '// JavaScript code\nconsole.log("Hello, World!");\n\n// Try adding:\n// for (let i = 0; i < 5; i++) {\n//   console.log(`Iteration ${i}`);\n// }';
+                        break;
+                    case 'python':
+                        defaultCode = '# Python code\nprint("Hello, World!")\n\n# Try adding:\n# for i in range(5):\n#     print(f"Number {i}")';
+                        break;
+                    case 'java':
+                        defaultCode = '// Java code\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, World!");\n        \n        // Try adding:\n        // for (int i = 0; i < 5; i++) {\n        //     System.out.println("Count: " + i);\n        // }\n    }\n}';
+                        break;
+                    case 'csharp':
+                        defaultCode = '// C# code\nusing System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, World!");\n        \n        // Try adding:\n        // for (int i = 0; i < 5; i++) {\n        //     Console.WriteLine($"Index {i}");\n        // }\n    }\n}';
+                        break;
+                    case 'php':
+                        defaultCode = '<?php\n// PHP code\necho "Hello, World!";\n\n// Try adding:\n// for ($i = 0; $i < 5; $i++) {\n//     echo "Loop $i\\n";\n// }\n?>';
+                        break;
+                    case 'ruby':
+                        defaultCode = '# Ruby code\nputs "Hello, World!"\n\n# Try adding:\n# 5.times do |i|\n#   puts "Count #{i}"\n# end';
+                        break;
+                    case 'go':
+                        defaultCode = '// Go code\npackage main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, World!")\n    \n    // Try adding:\n    // for i := 0; i < 5; i++ {\n    //     fmt.Printf("Value %d\\n", i)\n    // }\n}';
+                        break;
+                    case 'rust':
+                        defaultCode = '// Rust code\nfn main() {\n    println!("Hello, World!");\n    \n    // Try adding:\n    // for i in 0..5 {\n    //     println!("Number {}", i);\n    // }\n}';
+                        break;
+                }
+                
+                codeEditor.value = defaultCode;
+                updateHighlighting();
+                updateLineNumbers();
+            }
+            
+            function updateHighlighting() {
+            const language = languageSelect.value;
+            const code = codeEditor.value;
+            
+            // Simply set the text content (highlight.js will handle escaping)
+            highlightedContent.textContent = code;
+            highlightedContent.className = `language-${language}`;
+            
+            // Apply syntax highlighting
+            hljs.highlightElement(highlightedContent);
+            
+            // Replace newlines with <br> tags after highlighting
+            const highlightedHtml = highlightedContent.innerHTML;
+            highlightedContent.innerHTML = highlightedHtml.replace(/\n/g, '<br>');
+        }
+            
+            function updateLineNumbers() {
+                const code = codeEditor.value;
+                const lines = code.split('\n');
+                let lineNumbersHTML = '';
+                
+                for (let i = 0; i < lines.length; i++) {
+                    lineNumbersHTML += `${i + 1}<br>`;
+                }
+                
+                lineNumbers.innerHTML = lineNumbersHTML;
+                
+                // Sync scroll position
+                lineNumbers.scrollTop = codeEditor.scrollTop;
+            }
+            
+            function syncScroll() {
+                const highlightedCode = document.getElementById('highlighted-code');
+                highlightedCode.scrollTop = codeEditor.scrollTop;
+                highlightedCode.scrollLeft = codeEditor.scrollLeft;
+                lineNumbers.scrollTop = codeEditor.scrollTop;
+            }
+            
+            async function runCode() {
+                const code = codeEditor.value;
+                const language = languageSelect.value;
+                const input = compilerInput.value;
+                const languageId = languageToId[language];
+                
+                if (!languageId) {
+                    outputDiv.textContent = 'Error: Unsupported language for execution';
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Unsupported language
+                    `;
+                    return;
+                }
+                
+                // Clear previous output
+                outputDiv.textContent = '';
+                
+                // Update status
+                statusDiv.className = 'status loading';
+                statusDiv.innerHTML = `
+                    <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Executing ${language} code...
+                `;
+                
+                try {
+                    // Submit code to Judge0 API
+                    const submission = await submitToJudge0(code, languageId, input);
+                    
+                    // Check if submission was created successfully
+                    if (submission.token) {
+                        // Poll for execution results
+                        const result = await getExecutionResult(submission.token);
+                        displayExecutionResult(result);
+                    } else {
+                        throw new Error('Failed to create submission');
+                    }
+                } catch (error) {
+                    outputDiv.textContent = 'Failed to execute code: ' + error.message;
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Execution failed
+                    `;
+                }
+            }
+            
+            async function submitToJudge0(code, languageId, input) {
+                const url = 'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=false';
+                const options = {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-rapidapi-key': '66b7afa2f4msh8ac1acfc3cf96b6p1420cdjsn7dc36abf2503',
+                        'x-rapidapi-host': 'judge0-ce.p.rapidapi.com'
+                    },
+                    body: JSON.stringify({
+                        source_code: code,
+                        language_id: languageId,
+                        stdin: input || null
+                    })
+                };
+                
+                const response = await fetch(url, options);
+                return await response.json();
+            }
+            
+            async function getExecutionResult(token) {
+                const url = `https://judge0-ce.p.rapidapi.com/submissions/${token}?base64_encoded=false`;
+                const options = {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': '66b7afa2f4msh8ac1acfc3cf96b6p1420cdjsn7dc36abf2503',
+                        'x-rapidapi-host': 'judge0-ce.p.rapidapi.com'
+                    }
+                };
+                
+                // Poll for results with timeout
+                const startTime = Date.now();
+                const timeout = 15000; // 15 seconds timeout
+                
+                while (Date.now() - startTime < timeout) {
+                    const response = await fetch(url, options);
+                    const result = await response.json();
+                    
+                    // Status 1 and 2 mean the code is still being processed
+                    if (result.status && result.status.id > 2) {
+                        return result;
+                    }
+                    
+                    // Wait before polling again
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                throw new Error('Execution timeout');
+            }
+            
+            function displayExecutionResult(result) {
+                let output = '';
+                let statusMessage = '';
+                let statusClass = '';
+                
+                if (result.compile_output) {
+                    output += `Compilation Output:\n${result.compile_output}\n\n`;
+                    statusMessage = 'Compilation Error';
+                    statusClass = 'error';
+                } else if (result.stderr) {
+                    output += `Error Output:\n${result.stderr}\n\n`;
+                    statusMessage = 'Runtime Error';
+                    statusClass = 'error';
+                } else if (result.stdout) {
+                    output += `Program Output:\n${result.stdout}\n`;
+                    statusMessage = 'Execution Successful';
+                    statusClass = 'success';
+                } else if (result.message) {
+                    output += `Message:\n${result.message}\n`;
+                    statusMessage = 'Execution Completed';
+                    statusClass = result.status.id === 3 ? 'success' : 'error';
+                } else {
+                    output += 'No output produced\n';
+                    statusMessage = 'Execution Completed';
+                    statusClass = 'warning';
+                }
+                
+                // Add execution details
+                output += `\nExecution Details:\n`;
+                output += `- Time: ${result.time || 'N/A'} sec\n`;
+                output += `- Memory: ${result.memory || 'N/A'} KB\n`;
+                output += `- Status: ${result.status?.description || 'Unknown'}\n`;
+                
+                outputDiv.textContent = output;
+                statusDiv.className = `status ${statusClass}`;
+                statusDiv.innerHTML = `
+                    <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        ${statusClass === 'success' ? 
+                            '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />' : 
+                            '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />'}
+                    </svg>
+                    ${statusMessage}
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
